@@ -167,34 +167,34 @@ func Base64Encode(src []byte) []byte {
 	var (
 		p [4]int
 	)
-Loop:
-	for pos, line := 0, 0; len(src) > 0; {
+
+	for pos, lpos := 0, 0; len(src) > 0; {
 		// fmt.Println("step", pos, len(src), len(dst))
-		switch 76 - line {
+		switch 76 - lpos {
 		case 0:
 			dst[pos], dst[pos+1] = '\r', '\n'
 			p[0], p[1], p[2], p[3] = pos+2, pos+3, pos+4, pos+5
 			pos += 6
-			line = 4
+			lpos = 4
 		case 1:
 			dst[pos+1], dst[pos+2] = '\r', '\n'
 			p[0], p[1], p[2], p[3] = pos, pos+3, pos+4, pos+5
 			pos += 6
-			line = 3
+			lpos = 3
 		case 2:
 			dst[pos+2], dst[pos+3] = '\r', '\n'
 			p[0], p[1], p[2], p[3] = pos, pos+1, pos+4, pos+5
 			pos += 6
-			line = 2
+			lpos = 2
 		case 3:
 			dst[pos+3], dst[pos+4] = '\r', '\n'
 			p[0], p[1], p[2], p[3] = pos, pos+1, pos+2, pos+5
 			pos += 6
-			line = 1
+			lpos = 1
 		default:
 			p[0], p[1], p[2], p[3] = pos, pos+1, pos+2, pos+3
 			pos += 4
-			line += 4
+			lpos += 4
 		}
 
 		switch len(src) {
@@ -202,13 +202,13 @@ Loop:
 			dst[p[3]], dst[p[2]] = '=', '='
 			dst[p[1]] = base64table[(src[0]<<4)&0x3F]
 			dst[p[0]] = base64table[src[0]>>2]
-			break Loop
+			return dst
 		case 2:
 			dst[p[3]] = '='
 			dst[p[2]] = base64table[(src[1]<<2)&0x3F]
 			dst[p[1]] = base64table[(src[1]>>4)|(src[0]<<4)&0x3F]
 			dst[p[0]] = base64table[src[0]>>2]
-			break Loop
+			return dst
 		default:
 			dst[p[3]] = base64table[src[2]&0x3F]
 			dst[p[2]] = base64table[(src[2]>>6)|(src[1]<<2)&0x3F]

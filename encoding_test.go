@@ -134,19 +134,19 @@ func Test_QEncode(t *testing.T) {
 	}
 }
 
-func Benchmark_Base64Encode(b *testing.B) {
+var b64bmRes []byte
+
+func benchmarkBase64Encode(srcLen int, b *testing.B) {
+	src := make([]byte, srcLen)
 	for i := 0; i < b.N; i++ {
-		srcLen := i/1024 + 100
-		src := make([]byte, srcLen)
 		rand.Read(src)
-		act := Base64Encode(src)
-		_ = act
+		b64bmRes = Base64Encode(src)
 	}
 }
-func Benchmark_Base64Encode_builtin(b *testing.B) {
+
+func benchmarkBase64Encode_stdlib(srcLen int, b *testing.B) {
+	src := make([]byte, srcLen)
 	for i := 0; i < b.N; i++ {
-		srcLen := i/1024 + 100
-		src := make([]byte, srcLen)
 		rand.Read(src)
 		el := base64.StdEncoding.EncodedLen(srcLen)
 		b64 := make([]byte, el)
@@ -157,7 +157,38 @@ func Benchmark_Base64Encode_builtin(b *testing.B) {
 			exp = append(exp, '\r', '\n')
 			b64 = b64[76:]
 		}
-		exp = append(exp, b64...)
-		_ = exp
+		b64bmRes = append(exp, b64...)
 	}
+}
+
+func Benchmark_Base64Encode_1k(b *testing.B) {
+	benchmarkBase64Encode(1024, b)
+}
+
+func Benchmark_Base64Encode_stdlib_1k(b *testing.B) {
+	benchmarkBase64Encode_stdlib(1024, b)
+}
+
+func Benchmark_Base64Encode_4k(b *testing.B) {
+	benchmarkBase64Encode(4096, b)
+}
+
+func Benchmark_Base64Encode_stdlib_4k(b *testing.B) {
+	benchmarkBase64Encode_stdlib(4096, b)
+}
+
+func Benchmark_Base64Encode_10k(b *testing.B) {
+	benchmarkBase64Encode(10240, b)
+}
+
+func Benchmark_Base64Encode_stdlib_10k(b *testing.B) {
+	benchmarkBase64Encode_stdlib(10240, b)
+}
+
+func Benchmark_Base64Encode_40k(b *testing.B) {
+	benchmarkBase64Encode(40960, b)
+}
+
+func Benchmark_Base64Encode_stdlib_40k(b *testing.B) {
+	benchmarkBase64Encode_stdlib(40960, b)
 }
