@@ -36,7 +36,6 @@ type Message struct {
 	sync.RWMutex
 	domain        []byte
 	subject       []byte
-	subjectTplSrc string
 	subjectTpl    *ttpl.Template
 	sender        *Sender
 	from, replyTo *Address
@@ -67,10 +66,22 @@ func (m *Message) setSender(s *Sender) *Message {
 }
 
 // Subject sets the text for the subject of the message.
-func (m *Message) Subject(subject string) *Message {
+func (m *Message) Subject(subject interface{}) *Message {
 	m.Lock()
 	defer m.Unlock()
-	m.subject = []byte(subject)
+	switch subject := subject.(type) {
+	case string:
+		m.subject = []byte(subject)
+		m.subjectTpl = nil
+	case []byte:
+		m.subject = subject
+		m.subjectTpl = nil
+	case *ttpl.Template:
+		m.subject = nil
+		m.subjectTpl = subject
+	default:
+		m.errors = append(m.errors, errors.New("invalid argument type"))
+	}
 	return m
 }
 
@@ -89,7 +100,6 @@ func (m *Message) SubjectTemplate(tpl string) *Message {
 	}
 	m.Lock()
 	defer m.Unlock()
-	m.subjectTplSrc = tpl
 	m.subjectTpl = t
 	return m
 }
@@ -178,18 +188,38 @@ func (m *Message) Part(ctype string, cte CTE, bytes []byte, related ...Related) 
 }
 
 // Text sets the plain-text version of the message body to the provided content.
-func (m *Message) Text(text string) *Message {
+func (m *Message) Text(text interface{}) *Message {
 	m.Lock()
 	defer m.Unlock()
+
 	if m.text == nil {
 		m.text = &part{}
 		m.parts = append(m.parts, m.text)
 	}
-	*(m.text) = part{
-		ctype: "text/plain; charset=utf-8",
-		cte:   QuotedPrintable,
-		bytes: []byte(text),
+
+	switch text := text.(type) {
+	case string:
+		*(m.text) = part{
+			ctype: "text/plain; charset=utf-8",
+			cte:   QuotedPrintable,
+			bytes: []byte(text),
+		}
+	case []byte:
+		*(m.text) = part{
+			ctype: "text/plain; charset=utf-8",
+			cte:   QuotedPrintable,
+			bytes: text,
+		}
+	case *ttpl.Template:
+		*(m.text) = part{
+			ctype: "text/plain; charset=utf-8",
+			cte:   QuotedPrintable,
+			tpl:   text,
+		}
+	default:
+		m.errors = append(m.errors, errors.New("invalid argument type"))
 	}
+
 	return m
 }
 
@@ -213,28 +243,48 @@ func (m *Message) TextTemplate(tpl string) *Message {
 		m.parts = append(m.parts, m.text)
 	}
 	*(m.text) = part{
-		ctype:  "text/plain; charset=utf-8",
-		cte:    QuotedPrintable,
-		tplSrc: tpl,
-		tpl:    t,
+		ctype: "text/plain; charset=utf-8",
+		cte:   QuotedPrintable,
+		tpl:   t,
 	}
 	return m
 }
 
 // Html sets the HTML version of the message body to the provided content.
 // Optionally, related objects can be specified for inclusion.
-func (m *Message) Html(html string, related ...Related) *Message {
+func (m *Message) Html(html interface{}, related ...Related) *Message {
 	m.Lock()
 	defer m.Unlock()
+
 	if m.html == nil {
 		m.html = &part{}
 		m.parts = append(m.parts, m.html)
 	}
-	*(m.html) = part{
-		ctype:   "text/html; charset=utf-8",
-		cte:     QuotedPrintable,
-		bytes:   []byte(html),
-		related: related,
+
+	switch html := html.(type) {
+	case string:
+		*(m.html) = part{
+			ctype:   "text/html; charset=utf-8",
+			cte:     QuotedPrintable,
+			bytes:   []byte(html),
+			related: related,
+		}
+	case []byte:
+		*(m.html) = part{
+			ctype:   "text/html; charset=utf-8",
+			cte:     QuotedPrintable,
+			bytes:   html,
+			related: related,
+		}
+	case *htpl.Template:
+		*(m.html) = part{
+			ctype:   "text/html; charset=utf-8",
+			cte:     QuotedPrintable,
+			htmlTpl: html,
+			related: related,
+		}
+	default:
+		m.errors = append(m.errors, errors.New("invalid argument type"))
 	}
 	m.prepared = false // related may include files
 	return m
@@ -261,11 +311,10 @@ func (m *Message) HtmlTemplate(tpl string, related ...Related) *Message {
 		m.parts = append(m.parts, m.html)
 	}
 	*(m.html) = part{
-		ctype:      "text/html; charset=utf-8",
-		cte:        QuotedPrintable,
-		htmlTplSrc: tpl,
-		htmlTpl:    t,
-		related:    related,
+		ctype:   "text/html; charset=utf-8",
+		cte:     QuotedPrintable,
+		htmlTpl: t,
+		related: related,
 	}
 	m.prepared = false // related may include files
 	return m
@@ -624,41 +673,29 @@ func NewMessage(msg *Message) *Message {
 	msg.RLock()
 	defer msg.RUnlock()
 	m := &Message{
-		domain:        msg.domain,
-		sender:        msg.sender,
-		subject:       msg.subject,
-		subjectTplSrc: msg.subjectTplSrc,
-		from:          msg.from.Clone(),
-		replyTo:       msg.replyTo.Clone(),
-		to:            msg.to.Clone(),
-		cc:            msg.cc.Clone(),
-		bcc:           msg.bcc.Clone(),
-		prepared:      msg.prepared,
-	}
-	if msg.subjectTplSrc != "" {
-		// the template source was already parsed successfully once, so it is guaranteed to be valid
-		m.subjectTpl, _ = ttpl.New("").Parse(msg.subjectTplSrc)
+		domain:     msg.domain,
+		sender:     msg.sender,
+		subject:    msg.subject,
+		subjectTpl: msg.subjectTpl,
+		from:       msg.from.Clone(),
+		replyTo:    msg.replyTo.Clone(),
+		to:         msg.to.Clone(),
+		cc:         msg.cc.Clone(),
+		bcc:        msg.bcc.Clone(),
+		prepared:   msg.prepared,
 	}
 	m.parts = make([]*part, len(msg.parts))
 	for i, partData := range msg.parts {
 		p := &part{
-			ctype:      partData.ctype,
-			cte:        partData.cte,
-			tplSrc:     partData.tplSrc,
-			htmlTplSrc: partData.htmlTplSrc,
+			ctype:   partData.ctype,
+			cte:     partData.cte,
+			tpl:     partData.tpl,
+			htmlTpl: partData.htmlTpl,
 			// related    []Related
 		}
 		if len(partData.bytes) > 0 {
 			p.bytes = make([]byte, len(partData.bytes))
 			copy(p.bytes, partData.bytes)
-		}
-		if partData.tplSrc != "" {
-			// the template source was already parsed successfully once, so it is guaranteed to be valid
-			p.tpl, _ = ttpl.New("").Parse(partData.tplSrc)
-		}
-		if partData.htmlTplSrc != "" {
-			// the template source was already parsed successfully once, so it is guaranteed to be valid
-			p.htmlTpl, _ = htpl.New("").Parse(partData.htmlTplSrc)
 		}
 		if len(partData.related) > 0 {
 			p.related = make([]Related, len(partData.related))
@@ -695,14 +732,12 @@ func QuickMessage(subject string, body ...string) *Message {
 }
 
 type part struct {
-	ctype      string
-	cte        CTE
-	bytes      []byte
-	tplSrc     string
-	tpl        *ttpl.Template
-	htmlTplSrc string
-	htmlTpl    *htpl.Template
-	related    []Related
+	ctype   string
+	cte     CTE
+	bytes   []byte
+	tpl     *ttpl.Template
+	htmlTpl *htpl.Template
+	related []Related
 }
 
 // Related represents a multipart/related item.

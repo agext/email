@@ -144,7 +144,7 @@ func benchmarkBase64Encode(srcLen int, b *testing.B) {
 	}
 }
 
-func benchmarkBase64Encode_stdlib(srcLen int, b *testing.B) {
+func benchmarkBase64EncodeStdlib(srcLen int, b *testing.B) {
 	src := make([]byte, srcLen)
 	for i := 0; i < b.N; i++ {
 		rand.Read(src)
@@ -166,7 +166,7 @@ func Benchmark_Base64Encode_1k(b *testing.B) {
 }
 
 func Benchmark_Base64Encode_stdlib_1k(b *testing.B) {
-	benchmarkBase64Encode_stdlib(1024, b)
+	benchmarkBase64EncodeStdlib(1024, b)
 }
 
 func Benchmark_Base64Encode_4k(b *testing.B) {
@@ -174,7 +174,7 @@ func Benchmark_Base64Encode_4k(b *testing.B) {
 }
 
 func Benchmark_Base64Encode_stdlib_4k(b *testing.B) {
-	benchmarkBase64Encode_stdlib(4096, b)
+	benchmarkBase64EncodeStdlib(4096, b)
 }
 
 func Benchmark_Base64Encode_10k(b *testing.B) {
@@ -182,7 +182,7 @@ func Benchmark_Base64Encode_10k(b *testing.B) {
 }
 
 func Benchmark_Base64Encode_stdlib_10k(b *testing.B) {
-	benchmarkBase64Encode_stdlib(10240, b)
+	benchmarkBase64EncodeStdlib(10240, b)
 }
 
 func Benchmark_Base64Encode_40k(b *testing.B) {
@@ -190,5 +190,5 @@ func Benchmark_Base64Encode_40k(b *testing.B) {
 }
 
 func Benchmark_Base64Encode_stdlib_40k(b *testing.B) {
-	benchmarkBase64Encode_stdlib(40960, b)
+	benchmarkBase64EncodeStdlib(40960, b)
 }
