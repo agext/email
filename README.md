@@ -11,7 +11,7 @@ This package implements a simple yet powerful API for email message composition 
 
 ## Project Status
 
-v0.2 Edge: Breaking changes to the API unlikely but possible until the v1.0 release. May be robust enough to use in production, though provided on "AS IS" basis. Vendoring recommended.
+v0.2.1 Edge: Breaking changes to the API unlikely but possible until the v1.0 release. May be robust enough to use in production, though provided on "AS IS" basis. Vendoring recommended.
 
 This package is under active development. If you encounter any problems or have any suggestions for improvement, please [open an issue](https://github.com/agext/email/issues). Pull requests are welcome.
 
