@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/agext/uuid"
 )
 
 type messageObj struct {
@@ -43,6 +45,8 @@ func forceNow(unix int64) {
 func Test_Compose(t *testing.T) {
 	date := time.Date(2013, 8, 30, 9, 10, 11, 0, time.UTC)
 	workDir, _ := os.Getwd()
+	uid := []byte(uuid.New().Hex())
+	newUUID = func() []byte { return uid }
 	cases := []messageTestCase{
 		{
 			src: messageIn{
@@ -50,7 +54,7 @@ func Test_Compose(t *testing.T) {
 				from:    &Address{"test name", "test@example.com"},
 				text:    "Short test message",
 			},
-			expOut: []byte("Message-ID: <9srTfUIxPZpi3yFLMGGIRUDRiRmfXdU6R044aSQgZPc@example.com>\r\n" +
+			expOut: []byte("Message-ID: <" + string(uid) + "@example.com>\r\n" +
 				"Date: Fri, 30 Aug 2013 09:10:11 +0000\r\n" +
 				"Subject: Test #1\r\n" +
 				"From: \"test name\" <test@example.com>\r\n" +
@@ -66,24 +70,24 @@ func Test_Compose(t *testing.T) {
 				from:    &Address{"accented nåmé", "test@example.com"},
 				html:    "<head><style>.test {color:red}</style></head><body>Html <b>test</b> message</body>",
 			},
-			expOut: []byte("Message-ID: <u2lehLlrgGh7f9uCkAS4pw+z2Pp7ohm8ZguLmSnaQUU@example.com>\r\n" +
+			expOut: []byte("Message-ID: <" + string(uid) + "@example.com>\r\n" +
 				"Date: Fri, 30 Aug 2013 09:10:11 +0000\r\n" +
 				"Subject: Test #2\r\n" +
 				"From: =?utf-8?q?accented_n=C3=A5m=C3=A9?= <test@example.com>\r\n" +
 				"To: =?utf-8?q?accented_n=C3=A5m=C3=A9?= <test@example.com>\r\n" +
 				"MIME-Version: 1.0\r\n" +
 				"Content-Type: multipart/alternative;\r\n" +
-				"\tboundary==_au2lehLlrgGh7f9uCkAS4pw+z2Pp7ohm8ZguLmSnaQUU\r\n\r\n" +
-				"--=_au2lehLlrgGh7f9uCkAS4pw+z2Pp7ohm8ZguLmSnaQUU\r\n" +
+				"\tboundary=B_a_" + string(uid) + "\r\n\r\n" +
+				"--B_a_" + string(uid) + "\r\n" +
 				"Content-Type: text/plain; charset=utf-8\r\n" +
 				"Content-Transfer-Encoding: quoted-printable\r\n\r\n" +
 				"Html test message\r\n\r\n" +
-				"--=_au2lehLlrgGh7f9uCkAS4pw+z2Pp7ohm8ZguLmSnaQUU\r\n" +
+				"--B_a_" + string(uid) + "\r\n" +
 				"Content-Type: text/html; charset=utf-8\r\n" +
 				"Content-Transfer-Encoding: quoted-printable\r\n\r\n" +
 				"<head><style>.test {color:red}</style></head><body>Html <b>test</b> message=\r\n" +
 				"</body>\r\n\r\n" +
-				"--=_au2lehLlrgGh7f9uCkAS4pw+z2Pp7ohm8ZguLmSnaQUU--\r\n"),
+				"--B_a_" + string(uid) + "--\r\n"),
 		},
 		{
 			src: messageIn{
@@ -96,7 +100,7 @@ func Test_Compose(t *testing.T) {
 					{name: "test-file.txt", ctype: "text/plain", bytes: []byte("Δεσωρε αππελλανθυρ υθ μει, αν ηαβεο ομνες νυμκυαμ μεα. Αδ φιξ αλικυιπ ινφιδυντ, ηις εξ σαπερεθ δετρασθο σαεφολα, αδ δολορ αλικυανδο ηας. Ευ πυρθο ιυδισο εως, φισι σωνσεκυαθ πρι ευ. Ασυμ σοντεντιωνες ιυς ει, ει κυαεκυε ινσωλενς σενσιβυς κυο. Εξ κυωτ αλιενυμ ηις, συ πρω σονσυλατυ μεδιοσριθαθεμ. Τιβικυε ινστρυσθιορ κυι νο, ευμ ιδ κυοδσι τασιμαθες αδωλεσενς.")},
 				},
 			},
-			expOut: []byte("Message-ID: <oO+P6lWT3aDnzhsVt6NCD9+MWry18Hzbzt0hGcsiAts@example.com>\r\n" +
+			expOut: []byte("Message-ID: <" + string(uid) + "@example.com>\r\n" +
 				"Date: Fri, 30 Aug 2013 09:10:11 +0000\r\n" +
 				"Subject: =?utf-8?q?Test=E2=80=A6_#3?=\r\n" +
 				"From: =?utf-8?q?accented_n=C3=A5m=C3=A9?= <test@example.com>\r\n" +
@@ -108,11 +112,11 @@ func Test_Compose(t *testing.T) {
 				" =?utf-8?q?=CE=B1.?= <test2@example.com>\r\n" +
 				"MIME-Version: 1.0\r\n" +
 				"Content-Type: multipart/mixed;\r\n" +
-				"\tboundary==_moO+P6lWT3aDnzhsVt6NCD9+MWry18Hzbzt0hGcsiAts\r\n\r\n" +
-				"--=_moO+P6lWT3aDnzhsVt6NCD9+MWry18Hzbzt0hGcsiAts\r\n" +
+				"\tboundary=B_m_" + string(uid) + "\r\n\r\n" +
+				"--B_m_" + string(uid) + "\r\n" +
 				"Content-Type: multipart/alternative;\r\n" +
-				"\tboundary==_aoO+P6lWT3aDnzhsVt6NCD9+MWry18Hzbzt0hGcsiAts\r\n\r\n" +
-				"--=_aoO+P6lWT3aDnzhsVt6NCD9+MWry18Hzbzt0hGcsiAts\r\n" +
+				"\tboundary=B_a_" + string(uid) + "\r\n\r\n" +
+				"--B_a_" + string(uid) + "\r\n" +
 				"Content-Type: text/plain; charset=utf-8\r\n" +
 				"Content-Transfer-Encoding: quoted-printable\r\n\r\n" +
 				"Html test message =3D =CE=91=CE=B4 =CF=86=CE=B9=CE=BE =CE=B1=CE=BB=CE=B9=\r\n" +
@@ -121,7 +125,7 @@ func Test_Compose(t *testing.T) {
 				"=CE=B4=CE=B5=CF=84=CF=81=CE=B1=CF=83=CE=B8=CE=BF =CF=83=CE=B1=CE=B5=CF=86=\r\n" +
 				"=CE=BF=CE=BB=CE=B1, =CE=B1=CE=B4 =CE=B4=CE=BF=CE=BB=CE=BF=CF=81 =CE=B1=\r\n" +
 				"=CE=BB=CE=B9=CE=BA=CF=85=CE=B1=CE=BD=CE=B4=CE=BF =CE=B7=CE=B1=CF=82.\r\n\r\n" +
-				"--=_aoO+P6lWT3aDnzhsVt6NCD9+MWry18Hzbzt0hGcsiAts\r\n" +
+				"--B_a_" + string(uid) + "\r\n" +
 				"Content-Type: text/html; charset=utf-8\r\n" +
 				"Content-Transfer-Encoding: quoted-printable\r\n\r\n" +
 				"<head><style>.test {color:red}</style></head>=0D=0A<body>Html <b>test</b> m=\r\n" +
@@ -131,11 +135,11 @@ func Test_Compose(t *testing.T) {
 				"=CF=84=CF=81=CE=B1=CF=83=CE=B8=CE=BF =CF=83=CE=B1=CE=B5=CF=86=CE=BF=CE=BB=\r\n" +
 				"=CE=B1, =CE=B1=CE=B4 =CE=B4=CE=BF=CE=BB=CE=BF=CF=81 =CE=B1=CE=BB=CE=B9=\r\n" +
 				"=CE=BA=CF=85=CE=B1=CE=BD=CE=B4=CE=BF =CE=B7=CE=B1=CF=82.</body>\r\n\r\n" +
-				"--=_aoO+P6lWT3aDnzhsVt6NCD9+MWry18Hzbzt0hGcsiAts--\r\n\r\n" +
-				"--=_moO+P6lWT3aDnzhsVt6NCD9+MWry18Hzbzt0hGcsiAts\r\n" +
+				"--B_a_" + string(uid) + "--\r\n\r\n" +
+				"--B_m_" + string(uid) + "\r\n" +
 				"Content-Type: text/plain\r\n" +
 				"Content-Disposition: attachment;\r\n" +
-				"\tfilename=test-file.txt\r\n" +
+				"\tfilename=\"test-file.txt\"\r\n" +
 				"Content-Transfer-Encoding: base64\r\n\r\n" +
 				"zpTOtc+Dz4nPgc61IM6xz4DPgM61zrvOu86xzr3OuM+Fz4Egz4XOuCDOvM61zrksIM6xzr0gzrfO\r\n" +
 				"sc6yzrXOvyDOv868zr3Otc+CIM69z4XOvM66z4XOsc68IM68zrXOsS4gzpHOtCDPhs65zr4gzrHO\r\n" +
@@ -149,7 +153,7 @@ func Test_Compose(t *testing.T) {
 				"g8+BzrnOuM6xzrjOtc68LiDOpM65zrLOuc66z4XOtSDOuc69z4PPhM+Bz4XPg864zrnOv8+BIM66\r\n" +
 				"z4XOuSDOvc6/LCDOtc+FzrwgzrnOtCDOus+Fzr/OtM+Dzrkgz4TOsc+DzrnOvM6xzrjOtc+CIM6x\r\n" +
 				"zrTPic67zrXPg861zr3Pgi4=\r\n\r\n" +
-				"--=_moO+P6lWT3aDnzhsVt6NCD9+MWry18Hzbzt0hGcsiAts--\r\n"),
+				"--B_m_" + string(uid) + "--\r\n"),
 		},
 		{
 			src: messageIn{
@@ -163,7 +167,7 @@ func Test_Compose(t *testing.T) {
 					{name: filepath.Join(workDir, "test-file.txt")},
 				},
 			},
-			expOut: []byte("Message-ID: <BmwOIPdD22kjLpeb2oVNP1eFKgm3ilySX9MIo9lozPc@example.com>\r\n" +
+			expOut: []byte("Message-ID: <" + string(uid) + "@example.com>\r\n" +
 				"Date: Fri, 30 Aug 2013 09:10:11 +0000\r\n" +
 				"Subject: =?utf-8?q?Test=E2=80=A6_#4?=\r\n" +
 				"From: =?utf-8?q?accented_n=C3=A5m=C3=A9?= <test@example.com>\r\n" +
@@ -176,11 +180,11 @@ func Test_Compose(t *testing.T) {
 				" =?utf-8?q?=CE=B1.?= <test2@example.com>\r\n" +
 				"MIME-Version: 1.0\r\n" +
 				"Content-Type: multipart/mixed;\r\n" +
-				"\tboundary==_mBmwOIPdD22kjLpeb2oVNP1eFKgm3ilySX9MIo9lozPc\r\n\r\n" +
-				"--=_mBmwOIPdD22kjLpeb2oVNP1eFKgm3ilySX9MIo9lozPc\r\n" +
+				"\tboundary=B_m_" + string(uid) + "\r\n\r\n" +
+				"--B_m_" + string(uid) + "\r\n" +
 				"Content-Type: multipart/alternative;\r\n" +
-				"\tboundary==_aBmwOIPdD22kjLpeb2oVNP1eFKgm3ilySX9MIo9lozPc\r\n\r\n" +
-				"--=_aBmwOIPdD22kjLpeb2oVNP1eFKgm3ilySX9MIo9lozPc\r\n" +
+				"\tboundary=B_a_" + string(uid) + "\r\n\r\n" +
+				"--B_a_" + string(uid) + "\r\n" +
 				"Content-Type: text/plain; charset=utf-8\r\n" +
 				"Content-Transfer-Encoding: quoted-printable\r\n\r\n" +
 				"Html test message =3D =CE=91=CE=B4 =CF=86=CE=B9=CE=BE =CE=B1=CE=BB=CE=B9=\r\n" +
@@ -189,7 +193,7 @@ func Test_Compose(t *testing.T) {
 				"=CE=B4=CE=B5=CF=84=CF=81=CE=B1=CF=83=CE=B8=CE=BF =CF=83=CE=B1=CE=B5=CF=86=\r\n" +
 				"=CE=BF=CE=BB=CE=B1, =CE=B1=CE=B4 =CE=B4=CE=BF=CE=BB=CE=BF=CF=81 =CE=B1=\r\n" +
 				"=CE=BB=CE=B9=CE=BA=CF=85=CE=B1=CE=BD=CE=B4=CE=BF =CE=B7=CE=B1=CF=82.\r\n\r\n" +
-				"--=_aBmwOIPdD22kjLpeb2oVNP1eFKgm3ilySX9MIo9lozPc\r\n" +
+				"--B_a_" + string(uid) + "\r\n" +
 				"Content-Type: text/html; charset=utf-8\r\n" +
 				"Content-Transfer-Encoding: quoted-printable\r\n\r\n" +
 				"<head><style>.test {color:red}</style></head>=0D=0A<body>Html <b>test</b> m=\r\n" +
@@ -199,11 +203,11 @@ func Test_Compose(t *testing.T) {
 				"=CF=84=CF=81=CE=B1=CF=83=CE=B8=CE=BF =CF=83=CE=B1=CE=B5=CF=86=CE=BF=CE=BB=\r\n" +
 				"=CE=B1, =CE=B1=CE=B4 =CE=B4=CE=BF=CE=BB=CE=BF=CF=81 =CE=B1=CE=BB=CE=B9=\r\n" +
 				"=CE=BA=CF=85=CE=B1=CE=BD=CE=B4=CE=BF =CE=B7=CE=B1=CF=82.</body>\r\n\r\n" +
-				"--=_aBmwOIPdD22kjLpeb2oVNP1eFKgm3ilySX9MIo9lozPc--\r\n\r\n" +
-				"--=_mBmwOIPdD22kjLpeb2oVNP1eFKgm3ilySX9MIo9lozPc\r\n" +
+				"--B_a_" + string(uid) + "--\r\n\r\n" +
+				"--B_m_" + string(uid) + "\r\n" +
 				"Content-Type: text/plain; charset=utf-8\r\n" +
 				"Content-Disposition: attachment;\r\n" +
-				"\tfilename=test-file.txt\r\n" +
+				"\tfilename=\"test-file.txt\"\r\n" +
 				"Content-Transfer-Encoding: base64\r\n\r\n" +
 				"zpTOtc+Dz4nPgc61IM6xz4DPgM61zrvOu86xzr3OuM+Fz4Egz4XOuCDOvM61zrksIM6xzr0gzrfO\r\n" +
 				"sc6yzrXOvyDOv868zr3Otc+CIM69z4XOvM66z4XOsc68IM68zrXOsS4gzpHOtCDPhs65zr4gzrHO\r\n" +
@@ -217,7 +221,7 @@ func Test_Compose(t *testing.T) {
 				"g8+BzrnOuM6xzrjOtc68LiDOpM65zrLOuc66z4XOtSDOuc69z4PPhM+Bz4XPg864zrnOv8+BIM66\r\n" +
 				"z4XOuSDOvc6/LCDOtc+FzrwgzrnOtCDOus+Fzr/OtM+Dzrkgz4TOsc+DzrnOvM6xzrjOtc+CIM6x\r\n" +
 				"zrTPic67zrXPg861zr3Pgi4K\r\n\r\n" +
-				"--=_mBmwOIPdD22kjLpeb2oVNP1eFKgm3ilySX9MIo9lozPc--\r\n"),
+				"--B_m_" + string(uid) + "--\r\n"),
 		},
 		{
 			src: messageIn{
@@ -227,23 +231,23 @@ func Test_Compose(t *testing.T) {
 				htmlTpl:    "<head></head><body>Hi {{.name}}!</body>",
 			},
 			data: map[string]string{"name": "John & Jill"},
-			expOut: []byte("Message-ID: <M39MI6ET2vppJiewP9y3Uy0DUP+wE4yy8lze78aobrA@example.com>\r\n" +
+			expOut: []byte("Message-ID: <" + string(uid) + "@example.com>\r\n" +
 				"Date: Fri, 30 Aug 2013 09:10:11 +0000\r\n" +
 				"Subject: Test John & Jill\r\n" +
 				"From: \"test name\" <test@example.com>\r\n" +
 				"To: \"test name\" <test@example.com>\r\n" +
 				"MIME-Version: 1.0\r\n" +
 				"Content-Type: multipart/alternative;\r\n" +
-				"\tboundary==_aM39MI6ET2vppJiewP9y3Uy0DUP+wE4yy8lze78aobrA\r\n\r\n" +
-				"--=_aM39MI6ET2vppJiewP9y3Uy0DUP+wE4yy8lze78aobrA\r\n" +
+				"\tboundary=B_a_" + string(uid) + "\r\n\r\n" +
+				"--B_a_" + string(uid) + "\r\n" +
 				"Content-Type: text/plain; charset=utf-8\r\n" +
 				"Content-Transfer-Encoding: quoted-printable\r\n\r\n" +
 				"Hi John & Jill!\r\n\r\n" +
-				"--=_aM39MI6ET2vppJiewP9y3Uy0DUP+wE4yy8lze78aobrA\r\n" +
+				"--B_a_" + string(uid) + "\r\n" +
 				"Content-Type: text/html; charset=utf-8\r\n" +
 				"Content-Transfer-Encoding: quoted-printable\r\n\r\n" +
 				"<head></head><body>Hi John &amp; Jill!</body>\r\n\r\n" +
-				"--=_aM39MI6ET2vppJiewP9y3Uy0DUP+wE4yy8lze78aobrA--\r\n"),
+				"--B_a_" + string(uid) + "--\r\n"),
 		},
 	}
 

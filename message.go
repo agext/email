@@ -2,8 +2,8 @@ package email
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"errors"
+	"fmt"
 	htpl "html/template"
 	"io/ioutil"
 	"mime"
@@ -12,6 +12,8 @@ import (
 	"sync"
 	ttpl "text/template"
 	"time"
+
+	"github.com/agext/uuid"
 )
 
 // CTE represents a "Content-Transfer-Encoding" method identifier.
@@ -27,7 +29,10 @@ const (
 )
 
 var (
-	now = time.Now
+	now     = time.Now
+	newUUID = func() []byte {
+		return []byte(uuid.New().Hex())
+	}
 )
 
 // Message represents all the information necessary for composing an email message with optional
@@ -62,6 +67,11 @@ func (m *Message) setSender(s *Sender) *Message {
 	m.Lock()
 	defer m.Unlock()
 	m.sender = s
+	return m
+}
+
+func (m *Message) Sender(s *Sender) *Message {
+	m.setSender(s)
 	return m
 }
 
@@ -474,13 +484,7 @@ func (m *Message) Compose(data interface{}) []byte {
 	}
 
 	ts := []byte(now().In(time.UTC).Format(time.RFC1123Z))
-	// hash := sha256.New()
-	// hash.Write(ts)
-	// hash.Write(m.subject)
-	hash := sha256.Sum256(append(ts, m.subject...))
-	// uid := Base64Encode(hash.Sum(nil))[:43] // discard padding '='
-	uid := Base64Encode(hash[:])[:43] // discard padding '='
-	// fmt.Println(string(ts), string(m.subject), ":", string(uid), "--", base64.RawStdEncoding.EncodeToString(hash[:]))
+	uid := newUUID()
 
 	msg := newBuffer(4096)
 	msg.Write("Message-ID: <", uid, '@', domain, ">\r\n")
@@ -529,31 +533,31 @@ func (m *Message) Compose(data interface{}) []byte {
 	msg.Write("MIME-Version: 1.0\r\n")
 
 	if len(m.attachments) > 0 {
-		msg.Write("Content-Type: multipart/mixed;\r\n\tboundary==_m", uid,
-			"\r\n\r\n--=_m", uid, "\r\n")
+		msg.Write("Content-Type: multipart/mixed;\r\n\tboundary=B_m_", uid,
+			"\r\n\r\n--B_m_", uid, "\r\n")
 	}
 
 	alt := m.html != nil || len(m.parts) > 1
 
 	if alt {
-		msg.Write("Content-Type: multipart/alternative;\r\n\tboundary==_a", uid, "\r\n")
+		msg.Write("Content-Type: multipart/alternative;\r\n\tboundary=B_a_", uid, "\r\n")
 	}
 
 	if m.html != nil && m.text == nil {
 		if alt {
-			msg.Write("\r\n--=_a", uid, "\r\n")
+			msg.Write("\r\n--B_a_", uid, "\r\n")
 		}
 		msg.Write("Content-Type: text/plain; charset=utf-8\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n",
 			QuotedPrintableEncode([]byte(htmlToText(string(m.html.bytes)))), "\r\n")
 	}
 	for partNo, partData := range m.parts {
 		if alt {
-			msg.Write("\r\n--=_a", uid, "\r\n")
+			msg.Write("\r\n--B_a_", uid, "\r\n")
 		}
 		pn := strconv.Itoa(partNo)
 		if len(partData.related) > 0 {
-			msg.Write("Content-Type: multipart/related;\r\n\tboundary==_r", pn, uid,
-				"\r\n\r\n--=_r", pn, uid, "\r\n")
+			msg.Write("Content-Type: multipart/related;\r\n\tboundary=B_r_", pn, uid,
+				"\r\n\r\n--B_r_", pn, uid, "\r\n")
 			// ToDo: substitute the related Ids in content
 		}
 		switch partData.cte {
@@ -567,28 +571,28 @@ func (m *Message) Compose(data interface{}) []byte {
 				QuotedPrintableEncode(partData.bytes), "\r\n")
 		}
 		for _, relData := range partData.related {
-			msg.Write("\r\n--=_r", pn, uid, "\r\n")
+			msg.Write("\r\n--B_r_", pn, uid, "\r\n")
 			msg.Write("Content-Type: ", relData.ctype, "\r\nContent-Transfer-Encoding: base64\r\n\r\n",
 				Base64Encode(relData.data), "\r\n")
 		}
 		if len(partData.related) > 0 {
-			msg.Write("\r\n--=_r", pn, uid, "--\r\n")
+			msg.Write("\r\n--B_r_", pn, uid, "--\r\n")
 		}
 	}
 	if alt {
-		msg.Write("\r\n--=_a", uid, "--\r\n")
+		msg.Write("\r\n--B_a_", uid, "--\r\n")
 	}
 
 	for _, attData := range m.attachments {
-		msg.Write("\r\n--=_m", uid, "\r\n")
+		msg.Write("\r\n--B_m_", uid, "\r\n")
 		msg.Write("Content-Type: ", attData.ctype,
-			"\r\nContent-Disposition: attachment;\r\n\tfilename=", attData.name,
+			"\r\nContent-Disposition: attachment;\r\n\tfilename=", fmt.Sprintf("%q", attData.name),
 			"\r\nContent-Transfer-Encoding: base64\r\n\r\n",
 			Base64Encode(attData.data), "\r\n")
 	}
 
 	if len(m.attachments) > 0 {
-		msg.Write("\r\n--=_m", uid, "--\r\n")
+		msg.Write("\r\n--B_m_", uid, "--\r\n")
 	}
 
 	return msg.Bytes()
